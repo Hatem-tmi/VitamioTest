@@ -1,0 +1,14 @@
+.metadata
+.directory
+
+/VitamioTest/.DS_Store
+/VitamioTest/bin
+/VitamioTest/bin/*
+/VitamioTest/gen/*
+/VitamioTest/.settings/*
+
+/vitamio/.DS_Store
+/vitamio/bin
+/vitamio/bin/*
+/vitamio/gen/*
+/vitamio/.settings/*
