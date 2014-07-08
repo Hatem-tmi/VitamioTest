@@ -223,12 +223,15 @@ public class MediaController extends FrameLayout {
 		if (!mFromXml) {
 			removeAllViews();
 			mRoot = makeControllerView();
+			mRoot.setTag(getClass().getSimpleName());
 
 			FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.FILL_PARENT,
 					FrameLayout.LayoutParams.WRAP_CONTENT);
 			lp.gravity = Gravity.BOTTOM;
 			mRoot.setLayoutParams(lp);
 
+			if (view.findViewWithTag(getClass().getSimpleName()) != null)
+				view.removeView(mRoot);
 			view.addView(mRoot);
 		}
 		initControllerView(mRoot);

@@ -335,14 +335,6 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-
-		// Get device orientation
-		DisplayMetrics disp = mContext.getResources().getDisplayMetrics();
-		if (disp.widthPixels >= disp.heightPixels)
-			displayOrientation = DisplayOrientation.LANDSCAPE;
-		else
-			displayOrientation = DisplayOrientation.PORTRAIT;
-
 		int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
 		int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
 
@@ -440,14 +432,14 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 					return;
 
 				orientationValue = orientation;
-				if (orientation >= 270 && orientation < 360) {
+				if (orientation >= 280 && orientation < 360) {
 					Log.i("Landscape");
 
 					if (displayOrientation != DisplayOrientation.LANDSCAPE)
 						((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 
 					displayOrientation = DisplayOrientation.LANDSCAPE;
-				} else if (orientation >= 90 && orientation < 270) {
+				} else if (orientation >= 80 && orientation < 280) {
 					Log.i("Reverse Landscape");
 
 					if (displayOrientation != DisplayOrientation.REVERSE_LANDSCAPE)
