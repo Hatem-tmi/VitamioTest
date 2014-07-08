@@ -150,4 +150,18 @@ public class MainActivity extends Activity implements MediaPlayerControl {
 		else
 			return 0;
 	}
+
+	@Override
+	public boolean isFullScreen() {
+		if (videoView != null)
+			return videoView.isFullScreen();
+		else
+			return false;
+	}
+
+	@Override
+	public void toggleFullScreen() {
+		if (videoView != null)
+			videoView.toggleFullScreen();
+	}
 }

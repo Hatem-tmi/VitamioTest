@@ -786,4 +786,16 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	protected boolean isInPlaybackState() {
 		return (mMediaPlayer != null && mCurrentState != STATE_ERROR && mCurrentState != STATE_IDLE && mCurrentState != STATE_PREPARING);
 	}
+
+	@Override
+	public boolean isFullScreen() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void toggleFullScreen() {
+		// TODO Auto-generated method stub
+		
+	}
 }
