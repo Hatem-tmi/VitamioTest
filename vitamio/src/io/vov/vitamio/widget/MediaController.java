@@ -78,6 +78,7 @@ public class MediaController extends FrameLayout {
 	private View mRoot;
 	private SeekBar mProgress;
 	private TextView mEndTime, mCurrentTime;
+	private ImageButton mFullScreenButton;
 	private TextView mFileName;
 	private OutlineTextView mInfoView;
 	private String mTitle;
@@ -90,6 +91,7 @@ public class MediaController extends FrameLayout {
 	private AudioManager mAM;
 	private OnShownListener mShownListener;
 	private OnHiddenListener mHiddenListener;
+
 	@SuppressLint("HandlerLeak")
 	private Handler mHandler = new Handler() {
 		@Override
@@ -105,6 +107,7 @@ public class MediaController extends FrameLayout {
 					msg = obtainMessage(SHOW_PROGRESS);
 					sendMessageDelayed(msg, 1000 - (pos % 1000));
 					updatePausePlay();
+					updateFullScreen();
 				}
 				break;
 			}
@@ -159,6 +162,17 @@ public class MediaController extends FrameLayout {
 			mAM.setStreamMute(AudioManager.STREAM_MUSIC, false);
 			mDragging = false;
 			mHandler.sendEmptyMessageDelayed(SHOW_PROGRESS, 1000);
+		}
+	};
+	private View.OnClickListener mFullscreenListener = new View.OnClickListener() {
+		@Override
+		public void onClick(View v) {
+			if (mPlayer == null) {
+				return;
+			}
+
+			mPlayer.toggleFullScreen();
+			show(sDefaultTimeout);
 		}
 	};
 
@@ -253,6 +267,12 @@ public class MediaController extends FrameLayout {
 				mContext.getPackageName()));
 		mCurrentTime = (TextView) v.findViewById(getResources().getIdentifier("mediacontroller_time_current", "id",
 				mContext.getPackageName()));
+		mFullScreenButton = (ImageButton) v.findViewById(getResources().getIdentifier("mediacontroller_fullscreen",
+				"id", mContext.getPackageName()));
+		if (mFullScreenButton != null) {
+			mFullScreenButton.requestFocus();
+			mFullScreenButton.setOnClickListener(mFullscreenListener);
+		}
 		mFileName = (TextView) v.findViewById(getResources().getIdentifier("mediacontroller_file_name", "id",
 				mContext.getPackageName()));
 		if (mFileName != null)
@@ -262,6 +282,7 @@ public class MediaController extends FrameLayout {
 	public void setMediaPlayer(MediaPlayerControl player) {
 		mPlayer = player;
 		updatePausePlay();
+		updateFullScreen();
 	}
 
 	/**
@@ -438,6 +459,20 @@ public class MediaController extends FrameLayout {
 					mContext.getPackageName()));
 	}
 
+	public void updateFullScreen() {
+		if (mRoot == null || mFullScreenButton == null || mPlayer == null) {
+			return;
+		}
+
+		if (mPlayer.isFullScreen()) {
+			mFullScreenButton.setImageResource(getResources().getIdentifier("ic_media_fullscreen_shrink", "drawable",
+					mContext.getPackageName()));
+		} else {
+			mFullScreenButton.setImageResource(getResources().getIdentifier("ic_media_fullscreen_stretch", "drawable",
+					mContext.getPackageName()));
+		}
+	}
+
 	private void doPauseResume() {
 		if (mPlayer.isPlaying())
 			mPlayer.pause();
@@ -477,5 +512,9 @@ public class MediaController extends FrameLayout {
 		boolean isPlaying();
 
 		int getBufferPercentage();
+
+		boolean isFullScreen();
+
+		void toggleFullScreen();
 	}
 }

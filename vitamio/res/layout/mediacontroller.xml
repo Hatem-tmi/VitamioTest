@@ -5,7 +5,7 @@
     android:background="@color/mediacontroller_bg"
     android:orientation="vertical" >
 
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal" >
@@ -14,7 +14,7 @@
             android:id="@+id/mediacontroller_play_pause"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
+            android:layout_gravity="center_vertical"
             android:layout_marginLeft="5dp"
             android:background="@drawable/mediacontroller_button"
             android:contentDescription="@string/mediacontroller_play_pause"
@@ -25,30 +25,39 @@
             style="@style/MediaController_Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="5dp"
-            android:layout_toRightOf="@id/mediacontroller_play_pause" />
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="5dp" />
+
+        <SeekBar
+            android:id="@+id/mediacontroller_seekbar"
+            style="@style/MediaController_SeekBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1"
+            android:focusable="true"
+            android:max="1000" />
 
         <TextView
             android:id="@+id/mediacontroller_time_total"
             style="@style/MediaController_Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
+            android:layout_gravity="center_vertical"
             android:layout_marginRight="5dp" />
 
-        <SeekBar
-            android:id="@+id/mediacontroller_seekbar"
-            style="@style/MediaController_SeekBar"
-            android:layout_width="match_parent"
+        <ImageButton
+            android:id="@+id/mediacontroller_fullscreen"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerVertical="true"
-            android:layout_toLeftOf="@id/mediacontroller_time_total"
-            android:layout_toRightOf="@id/mediacontroller_time_current"
-            android:focusable="true"
-            android:max="1000" />
-    </RelativeLayout>
+            android:layout_gravity="center_vertical"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/description"
+            android:paddingBottom="4dip"
+            android:paddingLeft="10dip"
+            android:paddingRight="4dip"
+            android:paddingTop="4dip" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/mediacontroller_file_name"
