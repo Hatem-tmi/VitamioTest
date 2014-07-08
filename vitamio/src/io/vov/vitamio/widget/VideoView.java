@@ -175,6 +175,8 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			release(true);
 		}
 	};
+
+	// private boolean mAutoRotation = false; XXX
 	private Uri mUri;
 	private long mDuration;
 	private int mCurrentState = STATE_IDLE;
@@ -326,6 +328,20 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 		int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
 		int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
+
+		if (mVideoWidth > 0 && mVideoHeight > 0) {
+			if (mVideoWidth * height > width * mVideoHeight) {
+				// Log.i("image too tall, correcting");
+				height = width * mVideoHeight / mVideoWidth;
+			} else if (mVideoWidth * height < width * mVideoHeight) {
+				// Log.i("image too wide, correcting");
+				width = height * mVideoWidth / mVideoHeight;
+			} else {
+				// Log.i("aspect ratio is correct: " +
+				// width+"/"+height+"="+
+				// mVideoWidth+"/"+mVideoHeight);
+			}
+		}
 		setMeasuredDimension(width, height);
 	}
 
@@ -383,17 +399,23 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 		mVideoHeight = 0;
 		getHolder().setFormat(PixelFormat.RGBA_8888); // PixelFormat.RGB_565
 		getHolder().addCallback(mSHCallback);
+
 		// this value only use Hardware decoder before Android 2.3
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB && mHardwareDecoder) {
 			getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 		}
+
 		setFocusable(true);
 		setFocusableInTouchMode(true);
 		requestFocus();
 		mCurrentState = STATE_IDLE;
 		mTargetState = STATE_IDLE;
+
 		if (ctx instanceof Activity)
 			((Activity) ctx).setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+		// mAutoRotation = Settings.System.getInt(ctx.getContentResolver(),
+		// Settings.System.ACCELEROMETER_ROTATION, 0) == 1; XXX
 	}
 
 	public boolean isValid() {
