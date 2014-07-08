@@ -41,6 +41,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
 import android.media.AudioManager;
 import android.net.Uri;
@@ -67,10 +68,11 @@ import android.view.ViewGroup.LayoutParams;
  * {@link #setTimedTextShown(boolean)}
  */
 public class VideoView extends SurfaceView implements MediaController.MediaPlayerControl {
-	public static final int VIDEO_LAYOUT_ORIGIN = 0;
-	public static final int VIDEO_LAYOUT_SCALE = 1;
-	public static final int VIDEO_LAYOUT_STRETCH = 2;
-	public static final int VIDEO_LAYOUT_ZOOM = 3;
+
+	private enum VideoLayoutEnum {
+		VIDEO_LAYOUT_ORIGIN, VIDEO_LAYOUT_SCALE, VIDEO_LAYOUT_STRETCH, VIDEO_LAYOUT_ZOOM
+	}
+
 	private static final int STATE_ERROR = -1;
 	private static final int STATE_IDLE = 0;
 	private static final int STATE_PREPARING = 1;
@@ -81,10 +83,11 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	private static final int STATE_SUSPEND = 6;
 	private static final int STATE_RESUME = 7;
 	private static final int STATE_SUSPEND_UNSUPPORTED = 8;
+
 	OnVideoSizeChangedListener mSizeChangedListener = new OnVideoSizeChangedListener() {
 		@Override
 		public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-			Log.e("onVideoSizeChanged: (%dx%d)", width, height); // XXX
+			Log.d("onVideoSizeChanged: (%dx%d)", width, height);
 			mVideoWidth = mp.getVideoWidth();
 			mVideoHeight = mp.getVideoHeight();
 			mVideoAspectRatio = mp.getVideoAspectRatio();
@@ -92,6 +95,7 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 				setVideoLayout(mVideoLayout, mAspectRatio);
 		}
 	};
+
 	OnPreparedListener mPreparedListener = new OnPreparedListener() {
 		@Override
 		public void onPrepared(MediaPlayer mp) {
@@ -131,11 +135,13 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			}
 		}
 	};
+
 	SurfaceHolder.Callback mSHCallback = new SurfaceHolder.Callback() {
 		@Override
 		public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
 			mSurfaceWidth = w;
 			mSurfaceHeight = h;
+
 			boolean isValidState = (mTargetState == STATE_PLAYING);
 			boolean hasValidSize = (mVideoWidth == w && mVideoHeight == h);
 			if (mMediaPlayer != null && isValidState && hasValidSize) {
@@ -174,7 +180,7 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	private int mCurrentState = STATE_IDLE;
 	private int mTargetState = STATE_IDLE;
 	private float mAspectRatio = 0;
-	private int mVideoLayout = VIDEO_LAYOUT_SCALE;
+	private VideoLayoutEnum mVideoLayout = VideoLayoutEnum.VIDEO_LAYOUT_SCALE;
 	private SurfaceHolder mSurfaceHolder = null;
 	private MediaPlayer mMediaPlayer = null;
 	private int mVideoWidth;
@@ -321,48 +327,51 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 		int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
 		int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
 		setMeasuredDimension(width, height);
-		
-		Log.e("onMeasure - XXX"); // XXX
 	}
 
 	/**
 	 * Set the display options
 	 * 
-	 * @param layout
-	 *            <ul>
-	 *            <li>{@link #VIDEO_LAYOUT_ORIGIN}
-	 *            <li>{@link #VIDEO_LAYOUT_SCALE}
-	 *            <li>{@link #VIDEO_LAYOUT_STRETCH}
-	 *            <li>{@link #VIDEO_LAYOUT_ZOOM}
-	 *            </ul>
+	 * @param videoLayout
 	 * @param aspectRatio
 	 *            video aspect ratio, will audo detect if 0.
 	 */
-	public void setVideoLayout(int layout, float aspectRatio) {
+	public void setVideoLayout(VideoLayoutEnum videoLayout, float aspectRatio) {
 		LayoutParams lp = getLayoutParams();
 		DisplayMetrics disp = mContext.getResources().getDisplayMetrics();
-		int windowWidth = disp.widthPixels, windowHeight = disp.heightPixels;
+		int windowWidth = disp.widthPixels;
+		int windowHeight = disp.heightPixels;
 		float windowRatio = windowWidth / (float) windowHeight;
 		float videoRatio = aspectRatio <= 0.01f ? mVideoAspectRatio : aspectRatio;
+
 		mSurfaceHeight = mVideoHeight;
 		mSurfaceWidth = mVideoWidth;
-		if (VIDEO_LAYOUT_ORIGIN == layout && mSurfaceWidth < windowWidth && mSurfaceHeight < windowHeight) {
-			lp.width = (int) (mSurfaceHeight * videoRatio);
-			lp.height = mSurfaceHeight;
-		} else if (layout == VIDEO_LAYOUT_ZOOM) {
+
+		switch (videoLayout) {
+		case VIDEO_LAYOUT_ORIGIN:
+			if (mSurfaceWidth < windowWidth && mSurfaceHeight < windowHeight) {
+				lp.width = (int) (mSurfaceHeight * videoRatio);
+				lp.height = mSurfaceHeight;
+			}
+			break;
+		case VIDEO_LAYOUT_ZOOM:
 			lp.width = windowRatio > videoRatio ? windowWidth : (int) (videoRatio * windowHeight);
 			lp.height = windowRatio < videoRatio ? windowHeight : (int) (windowWidth / videoRatio);
-		} else {
-			boolean full = layout == VIDEO_LAYOUT_STRETCH;
+			break;
+		default:
+			boolean full = videoLayout == VideoLayoutEnum.VIDEO_LAYOUT_STRETCH;
 			lp.width = (full || windowRatio < videoRatio) ? windowWidth : (int) (videoRatio * windowHeight);
 			lp.height = (full || windowRatio > videoRatio) ? windowHeight : (int) (windowWidth / videoRatio);
+			break;
 		}
+
 		setLayoutParams(lp);
 		getHolder().setFixedSize(mSurfaceWidth, mSurfaceHeight);
+
 		Log.d("VIDEO: %dx%dx%f, Surface: %dx%d, LP: %dx%d, Window: %dx%dx%f", mVideoWidth, mVideoHeight,
 				mVideoAspectRatio, mSurfaceWidth, mSurfaceHeight, lp.width, lp.height, windowWidth, windowHeight,
 				windowRatio);
-		mVideoLayout = layout;
+		mVideoLayout = videoLayout;
 		mAspectRatio = aspectRatio;
 	}
 
@@ -791,13 +800,20 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 
 	@Override
 	public boolean isFullScreen() {
-		// TODO Auto-generated method stub
-		return false;
+		DisplayMetrics disp = mContext.getResources().getDisplayMetrics();
+		int windowWidth = disp.widthPixels;
+		int windowHeight = disp.heightPixels;
+
+		return windowWidth >= windowHeight;
 	}
 
 	@Override
 	public void toggleFullScreen() {
-		// TODO Auto-generated method stub
-		
+		if (mContext instanceof Activity) {
+			if (!isFullScreen())
+				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+			else
+				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+		}
 	}
 }
