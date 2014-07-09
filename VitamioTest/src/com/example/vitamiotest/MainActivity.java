@@ -15,8 +15,7 @@ import android.widget.ProgressBar;
 
 public class MainActivity extends Activity implements MediaPlayerControl {
 	private static final String TAG = MainActivity.class.getSimpleName();
-	private static final String VIDEO_PATH = // "http://clips.vorwaerts-gmbh.de/VfE_html5.mp4";
-	"http://video1.daybyday.fr/TradingTV/BNP/TTVBNP20140702171621.mp4";
+	private static final String VIDEO_PATH = "http://clips.vorwaerts-gmbh.de/VfE_html5.mp4";
 
 	private VideoView videoView;
 	private ProgressBar progressBar;
