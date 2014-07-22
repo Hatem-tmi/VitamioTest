@@ -61,9 +61,8 @@ import android.widget.TextView;
  * NOTES: In each way, if you want customize the MediaController, the SeekBar's
  * id must be mediacontroller_progress, the Play/Pause's must be
  * mediacontroller_pause, current time's must be mediacontroller_time_current,
- * total time's must be mediacontroller_time_total, file name's must be
- * mediacontroller_file_name. And your resources must have a pause_button
- * drawable and a play_button drawable.
+ * total time's must be mediacontroller_time_total. And your resources must have
+ * a pause_button drawable and a play_button drawable.
  * <p/>
  * Functions like show() and hide() have no effect when MediaController is
  * created in an xml layout.
@@ -74,14 +73,12 @@ public class MediaController extends FrameLayout {
 	private static final int SHOW_PROGRESS = 2;
 	private MediaPlayerControl mPlayer;
 	private Context mContext;
-	private View mAnchor;
+	private ViewGroup mAnchor;
 	private View mRoot;
 	private SeekBar mProgress;
 	private TextView mEndTime, mCurrentTime;
 	private ImageButton mFullScreenButton;
-	private TextView mFileName;
 	private OutlineTextView mInfoView;
-	private String mTitle;
 	private long mDuration;
 	private boolean mShowing;
 	private boolean mDragging;
@@ -276,10 +273,6 @@ public class MediaController extends FrameLayout {
 			mFullScreenButton.requestFocus();
 			mFullScreenButton.setOnClickListener(mFullscreenListener);
 		}
-		mFileName = (TextView) v.findViewById(getResources().getIdentifier("mediacontroller_file_name", "id",
-				mContext.getPackageName()));
-		if (mFileName != null)
-			mFileName.setText(mTitle);
 	}
 
 	public void setMediaPlayer(MediaPlayerControl player) {
@@ -300,17 +293,6 @@ public class MediaController extends FrameLayout {
 
 	public void show() {
 		show(sDefaultTimeout);
-	}
-
-	/**
-	 * Set the content of the file_name TextView
-	 * 
-	 * @param name
-	 */
-	public void setFileName(String name) {
-		mTitle = name;
-		if (mFileName != null)
-			mFileName.setText(mTitle);
 	}
 
 	/**
@@ -378,6 +360,14 @@ public class MediaController extends FrameLayout {
 			if (mHiddenListener != null)
 				mHiddenListener.onHidden();
 		}
+	}
+
+	public void remove() throws Exception {
+		if (mAnchor == null)
+			return;
+
+		if (mAnchor.findViewWithTag(getClass().getSimpleName()) != null)
+			mAnchor.removeView(mRoot);
 	}
 
 	public void setOnShownListener(OnShownListener l) {

@@ -30,12 +30,14 @@ import io.vov.vitamio.MediaPlayer.OnVideoSizeChangedListener;
 import io.vov.vitamio.MediaPlayer.TrackInfo;
 import io.vov.vitamio.Vitamio;
 import io.vov.vitamio.utils.Log;
+import io.vov.vitamio.widget.MediaController.MediaPlayerControl;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -71,11 +73,11 @@ import android.view.ViewGroup.LayoutParams;
  */
 public class VideoView extends SurfaceView implements MediaController.MediaPlayerControl {
 
-	private enum VideoLayoutEnum {
-		VIDEO_LAYOUT_ORIGIN, VIDEO_LAYOUT_SCALE, VIDEO_LAYOUT_STRETCH, VIDEO_LAYOUT_ZOOM
+	public enum VideoLayoutEnum {
+		VIDEO_LAYOUT_ORIGIN, VIDEO_LAYOUT_SCALE, VIDEO_LAYOUT_STRETCH, VIDEO_LAYOUT_ZOOM, VIDEO_LAYOUT_NO_SCALE
 	}
 
-	private enum DisplayOrientation {
+	public enum DisplayOrientation {
 		PORTRAIT, LANDSCAPE, REVERSE_LANDSCAPE;
 	}
 
@@ -93,6 +95,9 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	private DisplayOrientation displayOrientation;
 	private int orientationValue = 0;
 	private OrientationEventListener mOrientationEventListener;
+	private boolean isOrientationListenerRegistered = false;
+	private int videoWidth;
+	private int videoHeight;
 
 	OnVideoSizeChangedListener mSizeChangedListener = new OnVideoSizeChangedListener() {
 		@Override
@@ -191,7 +196,7 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	private int mCurrentState = STATE_IDLE;
 	private int mTargetState = STATE_IDLE;
 	private float mAspectRatio = 0;
-	private VideoLayoutEnum mVideoLayout = VideoLayoutEnum.VIDEO_LAYOUT_SCALE;
+	private VideoLayoutEnum mVideoLayout = VideoLayoutEnum.VIDEO_LAYOUT_NO_SCALE;
 	private SurfaceHolder mSurfaceHolder = null;
 	private MediaPlayer mMediaPlayer = null;
 	private int mVideoWidth;
@@ -361,7 +366,7 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	 * @param aspectRatio
 	 *            video aspect ratio, will audo detect if 0.
 	 */
-	public void setVideoLayout(VideoLayoutEnum videoLayout, float aspectRatio) {
+	private void setVideoLayout(VideoLayoutEnum videoLayout, float aspectRatio) {
 		LayoutParams lp = getLayoutParams();
 		DisplayMetrics disp = mContext.getResources().getDisplayMetrics();
 		int windowWidth = disp.widthPixels;
@@ -383,6 +388,8 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			lp.width = windowRatio > videoRatio ? windowWidth : (int) (videoRatio * windowHeight);
 			lp.height = windowRatio < videoRatio ? windowHeight : (int) (windowWidth / videoRatio);
 			break;
+		case VIDEO_LAYOUT_NO_SCALE:
+			break;
 		default:
 			boolean full = videoLayout == VideoLayoutEnum.VIDEO_LAYOUT_STRETCH;
 			lp.width = (full || windowRatio < videoRatio) ? windowWidth : (int) (videoRatio * windowHeight);
@@ -390,8 +397,11 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			break;
 		}
 
+		videoWidth = lp.width;
+		videoHeight = lp.height;
 		setLayoutParams(lp);
 		getHolder().setFixedSize(mSurfaceWidth, mSurfaceHeight);
+		requestLayout();
 
 		Log.d("VIDEO: %dx%dx%f, Surface: %dx%d, LP: %dx%d, Window: %dx%dx%f", mVideoWidth, mVideoHeight,
 				mVideoAspectRatio, mSurfaceWidth, mSurfaceHeight, lp.width, lp.height, windowWidth, windowHeight,
@@ -425,35 +435,33 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 
 		// Orientation sensor listener
 		mOrientationEventListener = new OrientationEventListener(ctx, SensorManager.SENSOR_DELAY_NORMAL) {
+			private static final int ROTATION_STEP = 30;
 
 			@Override
 			public void onOrientationChanged(int orientation) {
-				if (!canDetectOrientation() || Math.abs(orientation - orientationValue) < 45)
+				if (!isOrientationListenerRegistered || !canDetectOrientation())
+					return;
+
+				if (orientation > orientationValue && orientation - orientationValue < ROTATION_STEP)
+					return;
+
+				if (orientation < orientationValue
+						&& (orientation + 360 - orientationValue < ROTATION_STEP || orientationValue - orientation < ROTATION_STEP))
 					return;
 
 				orientationValue = orientation;
-				if (orientation >= 280 && orientation < 360) {
+				if (orientation >= 270 - 45 && orientation < 360 - 45) {
 					Log.i("Landscape");
 
-					if (displayOrientation != DisplayOrientation.LANDSCAPE)
-						((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-
-					displayOrientation = DisplayOrientation.LANDSCAPE;
-				} else if (orientation >= 80 && orientation < 280) {
+					setDisplayOrientation(DisplayOrientation.LANDSCAPE);
+				} else if (orientation >= 90 - 45 && orientation < 270 - 45) {
 					Log.i("Reverse Landscape");
 
-					if (displayOrientation != DisplayOrientation.REVERSE_LANDSCAPE)
-						((Activity) mContext)
-								.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
-
-					displayOrientation = DisplayOrientation.REVERSE_LANDSCAPE;
+					setDisplayOrientation(DisplayOrientation.REVERSE_LANDSCAPE);
 				} else {
 					Log.i("Portrait");
 
-					if (displayOrientation != DisplayOrientation.PORTRAIT)
-						((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-					displayOrientation = DisplayOrientation.PORTRAIT;
+					setDisplayOrientation(DisplayOrientation.PORTRAIT);
 				}
 			}
 		};
@@ -537,8 +545,10 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 	}
 
 	public void setMediaController(MediaController controller) {
-		if (mMediaController != null)
+		if (mMediaController != null) {
 			mMediaController.hide();
+			removeMediaController();
+		}
 		mMediaController = controller;
 		attachMediaController();
 	}
@@ -559,7 +569,6 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			if (mUri != null) {
 				List<String> paths = mUri.getPathSegments();
 				String name = paths == null || paths.isEmpty() ? "null" : paths.get(paths.size() - 1);
-				mMediaController.setFileName(name);
 			}
 		}
 	}
@@ -592,7 +601,7 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 		mOnInfoListener = l;
 	}
 
-	private void release(boolean cleartargetstate) {
+	public void release(boolean cleartargetstate) {
 		if (mMediaPlayer != null) {
 			mMediaPlayer.reset();
 			mMediaPlayer.release();
@@ -601,6 +610,18 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 			if (cleartargetstate)
 				mTargetState = STATE_IDLE;
 		}
+	}
+
+	public void removeMediaController() {
+		if (mMediaController == null)
+			return;
+
+		try {
+			mMediaController.remove();
+		} catch (Exception e) {
+		}
+
+		mMediaController = null;
 	}
 
 	@Override
@@ -866,26 +887,81 @@ public class VideoView extends SurfaceView implements MediaController.MediaPlaye
 		return (mMediaPlayer != null && mCurrentState != STATE_ERROR && mCurrentState != STATE_IDLE && mCurrentState != STATE_PREPARING);
 	}
 
-	@Override
-	public boolean isFullScreen() {
-		DisplayMetrics disp = mContext.getResources().getDisplayMetrics();
+	public DisplayOrientation getDisplayOrientation() {
+		return displayOrientation;
+	}
+
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
+	public void setDisplayOrientation(DisplayOrientation displayOrientation) {
+		this.displayOrientation = displayOrientation;
+
+		switch (displayOrientation) {
+		case PORTRAIT:
+			((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+			updateVideoSize(false);
+			break;
+		case LANDSCAPE:
+			((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+			updateVideoSize(true);
+			break;
+		case REVERSE_LANDSCAPE:
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD)
+				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+			else
+				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+			updateVideoSize(true);
+			break;
+		default:
+			break;
+		}
+	}
+
+	public boolean isOrientationListenerRegistered() {
+		return isOrientationListenerRegistered;
+	}
+
+	public void registerOrientationListener() {
+		this.isOrientationListenerRegistered = true;
+	}
+
+	public void unregisterOrientationListener() {
+		this.isOrientationListenerRegistered = false;
+	}
+
+	public void updateVideoSize(boolean fullScreen) {
+		DisplayMetrics disp = getResources().getDisplayMetrics();
 		int windowWidth = disp.widthPixels;
 		int windowHeight = disp.heightPixels;
 
-		return windowWidth >= windowHeight;
+		LayoutParams lp = getLayoutParams();
+		if (fullScreen) {
+			if (windowWidth >= windowHeight) {
+				lp.width = windowWidth;
+				lp.height = windowHeight;
+			} else {
+				lp.width = windowHeight;
+				lp.height = windowWidth;
+			}
+		} else {
+			lp.width = videoWidth;
+			lp.height = videoHeight;
+		}
+
+		setLayoutParams(lp);
+		requestLayout();
+	}
+
+	@Override
+	public boolean isFullScreen() {
+		if (mContext != null && mContext instanceof MediaPlayerControl)
+			return ((MediaPlayerControl) mContext).isFullScreen();
+		else
+			return false;
 	}
 
 	@Override
 	public void toggleFullScreen() {
-		if (mContext instanceof Activity) {
-
-			if (!isFullScreen()) {
-				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-				displayOrientation = DisplayOrientation.LANDSCAPE;
-			} else {
-				((Activity) mContext).setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-				displayOrientation = DisplayOrientation.PORTRAIT;
-			}
-		}
+		if (mContext != null && mContext instanceof MediaPlayerControl)
+			((MediaPlayerControl) mContext).toggleFullScreen();
 	}
 }
